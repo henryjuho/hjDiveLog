@@ -26,9 +26,13 @@ class DiveWindow(QtGui.QWidget):
         top_boxes.addWidget(self.dive_stats_box())
         top_boxes.addWidget(self.gas_stats_box())
 
+        # notes box
+        dive_notes = self.notes_box()
+
         # add everything to main layout
         dw_layout.addLayout(top_boxes)
         dw_layout.addWidget(profile_plot)
+        dw_layout.addWidget(dive_notes)
         self.setLayout(dw_layout)
 
     def dive_stats_box(self):
@@ -76,6 +80,44 @@ class DiveWindow(QtGui.QWidget):
 
         return stats_box
 
+    def notes_box(self):
+
+        note_text = 'This was a very exciting dive with over 1m vis'
+
+        note_layout = QtGui.QVBoxLayout()
+        notes = QtGui.QTextEdit()
+        notes.setText(note_text)
+        notes.setReadOnly(True)
+        note_layout.addWidget(notes)
+
+        box = QtGui.QGroupBox('Notes')
+        box.setLayout(note_layout)
+
+        return box
+
+
+class SelectWindow(QtGui.QGroupBox):
+    def __init__(self, parent=None):
+        super(SelectWindow, self).__init__(parent)
+
+        self.setTitle('Dive selection')
+        self.setFixedWidth(300)
+
+        sw_layout = QtGui.QVBoxLayout()
+
+        # top buttons
+        btn_layout = QtGui.QHBoxLayout()
+        add_dive_btn = QtGui.QPushButton('+')
+        btn_layout.addWidget(add_dive_btn)
+        btn_layout.addStretch()
+
+        selection_pane = QtGui.QListWidget()
+
+        sw_layout.addWidget(selection_pane)
+        sw_layout.addLayout(btn_layout)
+
+        self.setLayout(sw_layout)
+
 
 class Window(QtGui.QMainWindow):
 
@@ -104,24 +146,24 @@ class Window(QtGui.QMainWindow):
         whole_layout = QtGui.QHBoxLayout()
 
         # left dive add / select column
-        left_box = QtGui.QGroupBox()
-        left_column = QtGui.QVBoxLayout()
-
-        left_box.setLayout(left_column)
+        left_box = SelectWindow()
 
         # main dive info window
         log_windows = QtGui.QVBoxLayout()
 
-        dive_tabs = QtGui.QTabWidget()
-        dive_tabs.tab1 = DiveWindow()
-        dive_tabs.tab2 = QtGui.QWidget()
-        dive_tabs.tab3 = QtGui.QWidget()
+        self.dive_tabs = QtGui.QTabWidget()
+        self.dive_tabs.tab1 = DiveWindow()
+        self.dive_tabs.tab2 = QtGui.QWidget()
+        self.dive_tabs.tab3 = QtGui.QWidget()
 
-        dive_tabs.addTab(dive_tabs.tab1, "Tab 1")
-        dive_tabs.addTab(dive_tabs.tab2, "Tab 2")
-        dive_tabs.addTab(dive_tabs.tab3, "Tab 3")
+        self.dive_tabs.addTab(self.dive_tabs.tab1, "Tab 1")
+        self.dive_tabs.addTab(self.dive_tabs.tab2, "Tab 2")
+        self.dive_tabs.addTab(self.dive_tabs.tab3, "Tab 3")
 
-        log_windows.addWidget(dive_tabs)
+        self.dive_tabs.setTabsClosable(True)
+
+        self.dive_tabs.tabCloseRequested.connect(self.close_tab)
+        log_windows.addWidget(self.dive_tabs)
 
         whole_layout.addWidget(left_box)
         whole_layout.addLayout(log_windows)
@@ -130,6 +172,12 @@ class Window(QtGui.QMainWindow):
         main_widget.setLayout(whole_layout)
         self.setCentralWidget(main_widget)
         self.show()
+
+    def close_tab(self, currentIndex):
+
+        current_tab = self.dive_tabs.widget(currentIndex)
+        current_tab.deleteLater()
+        self.dive_tabs.removeTab(currentIndex)
 
     def quit_app(self):
 
