@@ -7,6 +7,18 @@ import pyqtgraph as pg
 import numpy as np
 
 
+test_data ={'1 - 16/02/16': {'time_in': '12:00', 'dive_time': '01:22', 'time_out': '13:22',
+                             'max_depth': '12', 'average_depth': '8', 'temp': '14C',
+                             'start_pressure': '200', 'end_pressure': '60', 'volume': '24',
+                             'SAC_rate': '21', 'notes': 'This was a very exciting dive with over 3m vis',
+                             'profile': (np.cumsum((0, 2, 72, 3, 3, 3)), (0, -12, -12, -6, -6, 0))},
+            '2 - 16/02/16': {'time_in': '08:00', 'dive_time': '00:43', 'time_out': '08:43',
+                             'max_depth': '18', 'average_depth': '8', 'temp': '14C',
+                             'start_pressure': '200', 'end_pressure': '60', 'volume': '24',
+                             'SAC_rate': '21', 'notes': 'This was a very exciting dive with many wrecks',
+                             'profile': (np.cumsum((0, 2, 32, 3, 3, 3)), (0, -18, -18, -6, -6, 0))}}
+
+
 class DiveWindow(QtGui.QWidget):
     def __init__(self, dive_record, parent=None):
 
@@ -111,29 +123,6 @@ class DiveWindow(QtGui.QWidget):
         return box
 
 
-class SelectWindow(QtGui.QGroupBox):
-    def __init__(self, parent=None):
-        super(SelectWindow, self).__init__(parent)
-
-        self.setTitle('Dive selection')
-        self.setFixedWidth(300)
-
-        sw_layout = QtGui.QVBoxLayout()
-
-        # top buttons
-        btn_layout = QtGui.QHBoxLayout()
-        add_dive_btn = QtGui.QPushButton('+')
-        btn_layout.addWidget(add_dive_btn)
-        btn_layout.addStretch()
-
-        selection_pane = QtGui.QListWidget()
-
-        sw_layout.addWidget(selection_pane)
-        sw_layout.addLayout(btn_layout)
-
-        self.setLayout(sw_layout)
-
-
 class Window(QtGui.QMainWindow):
 
     def __init__(self):
@@ -142,11 +131,7 @@ class Window(QtGui.QMainWindow):
         self.setWindowTitle('hjDiveLog')
 
         # test data
-        test_dive_record = {'time_in': '12:00', 'dive_time': '01:22', 'time_out': '13:22',
-                            'max_depth': '12', 'average_depth': '8', 'temp': '14C',
-                            'start_pressure': '200', 'end_pressure': '60', 'volume': '24',
-                            'SAC_rate': '21', 'notes': 'This was a very exciting dive with over 3m vis',
-                            'profile': (np.cumsum((0, 2, 72, 3, 3, 3)), (0, -12, -12, -6, -6, 0))}
+        self.dive_data = test_data
 
         # set toolbar
         toolbar = QtGui.QToolBar(self)
@@ -168,19 +153,38 @@ class Window(QtGui.QMainWindow):
         whole_layout = QtGui.QHBoxLayout()
 
         # left dive add / select column
-        left_box = SelectWindow()
+        left_box = QtGui.QGroupBox('Dive selection')
+        left_box.setFixedWidth(300)
+
+        sw_layout = QtGui.QVBoxLayout()
+
+        # bottom buttons
+        btn_layout = QtGui.QHBoxLayout()
+        add_dive_btn = QtGui.QPushButton('+')
+        btn_layout.addWidget(add_dive_btn)
+        btn_layout.addStretch()
+
+        # make and populate list
+        selection_pane = QtGui.QListWidget()
+        for dive in test_data.keys():
+            dive_entry = QtGui.QListWidgetItem(dive)
+            selection_pane.addItem(dive_entry)
+
+        selection_pane.itemDoubleClicked.connect(self.open_tab)
+
+        sw_layout.addWidget(selection_pane)
+        sw_layout.addLayout(btn_layout)
+
+        left_box.setLayout(sw_layout)
 
         # main dive info window
         log_windows = QtGui.QVBoxLayout()
 
+        self.tabs_open = set()
         self.dive_tabs = QtGui.QTabWidget()
-        self.dive_tabs.tab1 = DiveWindow(test_dive_record)
         self.dive_tabs.tab2 = QtGui.QWidget()
-        self.dive_tabs.tab3 = QtGui.QWidget()
 
-        self.dive_tabs.addTab(self.dive_tabs.tab1, "Tab 1")
         self.dive_tabs.addTab(self.dive_tabs.tab2, "Tab 2")
-        self.dive_tabs.addTab(self.dive_tabs.tab3, "Tab 3")
 
         self.dive_tabs.setTabsClosable(True)
 
@@ -195,11 +199,26 @@ class Window(QtGui.QMainWindow):
         self.setCentralWidget(main_widget)
         self.show()
 
+    def open_tab(self, item):
+        item_text = str(item.text())
+        record = self.dive_data[item_text]
+
+        if item_text not in self.tabs_open:
+            self.dive_tabs.tab = DiveWindow(record)
+            self.dive_tabs.addTab(self.dive_tabs.tab, item_text)
+            self.dive_tabs.setCurrentWidget(self.dive_tabs.tab)
+            self.tabs_open |= {item_text}
+
+        else:
+            pass
+
     def close_tab(self, currentIndex):
 
+        item_text = str(self.dive_tabs.tabText(currentIndex))
         current_tab = self.dive_tabs.widget(currentIndex)
         current_tab.deleteLater()
         self.dive_tabs.removeTab(currentIndex)
+        self.tabs_open.remove(item_text)
 
     def quit_app(self):
 
