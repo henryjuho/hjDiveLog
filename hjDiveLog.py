@@ -69,6 +69,7 @@ class HistoryWindow(QtGui.QWidget):
         super(HistoryWindow, self).__init__(parent)
 
         # set stats
+        self.dive_data_frame = dive_data_frame
         no_dives = str(len(dive_data_frame.index))
         average_len = str(min_2_time(np.average([time_2_min(x) for x in dive_data_frame.duration])))
         total_hours = str(min_2_time(np.sum([time_2_min(x) for x in dive_data_frame.duration])))
@@ -119,19 +120,24 @@ class HistoryWindow(QtGui.QWidget):
         # invert default background foreground
         pg.setConfigOption('background', 0.89)
         pg.setConfigOption('foreground', 'k')
-        sum_plot = pg.PlotWidget()
+        self.sum_plot = pg.PlotWidget()
 
         # add all to layout
         his_layout = QtGui.QVBoxLayout()
         his_layout.addWidget(header)
         his_layout.addLayout(grid)
         his_layout.addLayout(selection_layout)
-        his_layout.addWidget(sum_plot)
+        his_layout.addWidget(self.sum_plot)
 
         self.setLayout(his_layout)
 
     def change_plot(self):
-        pass
+        vals = self.dive_data_frame.max_depth.asobject
+        y, x = np.histogram(vals, bins=len(vals))
+
+        # We are required to use stepMode=True so that PlotCurveItem will interpret this data correctly.
+        curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
+        self.sum_plot.addItem(curve)
 
 
 class DiveWindow(QtGui.QWidget):
