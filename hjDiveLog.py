@@ -5,18 +5,53 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 import pyqtgraph as pg
 import numpy as np
+import pandas as pd
 
 
-test_data ={'1 - 16/02/16': {'time_in': '12:00', 'dive_time': '01:22', 'time_out': '13:22',
-                             'max_depth': '12', 'average_depth': '8', 'temp': '14C',
-                             'start_pressure': '200', 'end_pressure': '60', 'volume': '24',
-                             'SAC_rate': '21', 'notes': 'This was a very exciting dive with over 3m vis',
-                             'profile': (np.cumsum((0, 2, 72, 3, 3, 3)), (0, -12, -12, -6, -6, 0))},
-            '2 - 16/02/16': {'time_in': '08:00', 'dive_time': '00:43', 'time_out': '08:43',
-                             'max_depth': '18', 'average_depth': '8', 'temp': '14C',
-                             'start_pressure': '200', 'end_pressure': '60', 'volume': '24',
-                             'SAC_rate': '21', 'notes': 'This was a very exciting dive with many wrecks',
-                             'profile': (np.cumsum((0, 2, 32, 3, 3, 3)), (0, -18, -18, -6, -6, 0))}}
+def est_profile(t1, d1):
+    # calc ascent and descent times
+    t_per_m_desc = 1.0 / 30.0  # 30m per min descent rate
+    t_per_m_asc = 1.0 / 15.0  # 15m per min to 6m
+    t_per_m_asc_6 = 1.0 / 6  # 6m per min above 6m
+    safety2surf = 1
+    stop_t = 3
+    desc_1_time = t_per_m_desc * d1
+    asc_1_time2safety = t_per_m_asc * (d1 - 6)
+    d1_bt = t1 - desc_1_time - asc_1_time2safety - safety2surf - stop_t
+
+    # profile
+    x = [0, desc_1_time, d1_bt, asc_1_time2safety, stop_t, safety2surf]
+    y = [0, -d1, -d1, -6, -6, 0]
+
+    x_cum = np.cumsum(x)
+
+    return x_cum, y
+
+
+def depth2pressure(dep):
+    return dep/10.0 + 1
+
+
+def time_2_min(time):
+    hours, mins = [int(x) for x in time.split(':')]
+    return float((hours * 60) + mins)
+
+
+def calc_sac(start_p, end_p, vol, depth, t):
+    t = time_2_min(t)
+    vol_gas_used = (start_p - end_p) * vol
+    l_per_min_atdepth = vol_gas_used / t
+    sac = l_per_min_atdepth / depth2pressure(depth)
+    return round(sac, 1)
+
+
+def make_data_frame():
+
+    csv_data = 'dive_data.csv'
+    dd = pd.read_csv(csv_data, index_col='num')
+    dd['SAC_rate'] = dd.apply(lambda x: calc_sac(x.start_pres, x.end_pres, x.volume, x.max_depth, x.duration), axis=1)
+    dd['profile'] = dd.apply(lambda x: est_profile(time_2_min(x.duration), x.max_depth), axis=1)
+    return dd
 
 
 class DiveWindow(QtGui.QWidget):
@@ -41,18 +76,18 @@ class DiveWindow(QtGui.QWidget):
         top_boxes.addWidget(self.gas_stats_box(dive_record))
 
         # notes box
-        dive_notes = self.notes_box(dive_record['notes'])
+        dive_notes = self.notes_box(str(dive_record['notes'].asobject[0]))
 
         # add everything to main layout
         dw_layout.addLayout(top_boxes)
-        dw_layout.addWidget(self.profile_box(dive_record['profile']))
+        dw_layout.addWidget(self.profile_box(dive_record['profile'].asobject[0]))
         dw_layout.addWidget(dive_notes)
         self.setLayout(dw_layout)
 
     def dive_stats_box(self, record):
 
-        labels = ['time_in', 'dive_time', 'time_out', 'max_depth', 'average_depth', 'temp']
-        values = [record[x] for x in labels]
+        labels = ['time_in', 'duration', 'time_out', 'max_depth', 'avg_depth', 'temp']
+        values = [str(record[x].asobject[0]) for x in labels]
 
         dive_box = self.stats_box(labels, values, 'Dive stats', 3)
 
@@ -60,8 +95,8 @@ class DiveWindow(QtGui.QWidget):
 
     def gas_stats_box(self, record):
 
-        labels = ['start_pressure', 'end_pressure', 'volume', 'SAC_rate']
-        values = [record[x] for x in labels]
+        labels = ['start_pres', 'end_pres', 'volume', 'SAC_rate']
+        values = [str(record[x].asobject[0]) for x in labels]
 
         gas_box = self.stats_box(labels, values, 'Gas stats', 2)
 
@@ -131,7 +166,7 @@ class Window(QtGui.QMainWindow):
         self.setWindowTitle('hjDiveLog')
 
         # test data
-        self.dive_data = test_data
+        self.dive_data = make_data_frame()
 
         # set toolbar
         toolbar = QtGui.QToolBar(self)
@@ -166,8 +201,9 @@ class Window(QtGui.QMainWindow):
 
         # make and populate list
         selection_pane = QtGui.QListWidget()
-        for dive in test_data.keys():
-            dive_entry = QtGui.QListWidgetItem(dive)
+        for dive in self.dive_data.index:
+            label = str(dive) + ' - ' + self.dive_data[dive-1: dive].date.asobject[0]
+            dive_entry = QtGui.QListWidgetItem(label)
             selection_pane.addItem(dive_entry)
 
         selection_pane.itemDoubleClicked.connect(self.open_tab)
@@ -201,7 +237,8 @@ class Window(QtGui.QMainWindow):
 
     def open_tab(self, item):
         item_text = str(item.text())
-        record = self.dive_data[item_text]
+        panda_index = int(item_text.split(' - ')[0])
+        record = self.dive_data[panda_index-1:panda_index]
 
         if item_text not in self.tabs_open:
             self.dive_tabs.tab = DiveWindow(record)
