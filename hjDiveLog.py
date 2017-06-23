@@ -6,6 +6,7 @@ from PyQt4 import QtCore
 import pyqtgraph as pg
 import numpy as np
 import pandas as pd
+import math
 
 
 def est_profile(t1, d1):
@@ -37,6 +38,15 @@ def time_2_min(time):
     return float((hours * 60) + mins)
 
 
+def min_2_time(minutes):
+    no_hours = int(minutes) / 60
+    mins = minutes - (no_hours * 60)
+
+    time = '{:0>2}:{:0>2}'.format(no_hours, int(mins))
+
+    return time
+
+
 def calc_sac(start_p, end_p, vol, depth, t):
     t = time_2_min(t)
     vol_gas_used = (start_p - end_p) * vol
@@ -54,6 +64,76 @@ def make_data_frame():
     return dd
 
 
+class HistoryWindow(QtGui.QWidget):
+    def __init__(self, dive_data_frame, parent=None):
+        super(HistoryWindow, self).__init__(parent)
+
+        # set stats
+        no_dives = str(len(dive_data_frame.index))
+        average_len = str(min_2_time(np.average([time_2_min(x) for x in dive_data_frame.duration])))
+        total_hours = str(min_2_time(np.sum([time_2_min(x) for x in dive_data_frame.duration])))
+        mean_sac = str(round(np.average([x for x in dive_data_frame.SAC_rate if not math.isnan(x)]), 1))
+
+        # heading label
+        header = QtGui.QLabel('Dive summaries')
+
+        # Dives to date: Time to date: Average dive time: mean SAC rate:
+        labels = ['Dives to date:', 'Average dive length:', 'Hours to date:', 'mean SAC rate:']
+        values = [no_dives, average_len, total_hours, mean_sac]
+
+        grid = QtGui.QGridLayout()
+
+        row, column = 0, 0
+
+        for i in range(len(labels)):
+            lab, val = labels[i], values[i]
+
+            qt_lab = QtGui.QLabel(lab, self)
+            qt_val = QtGui.QLabel(val, self)
+
+            grid.addWidget(qt_lab, row, column)
+            grid.addWidget(qt_val, row, column + 1)
+
+            if row == 1:
+                row = 0
+                column += 2
+            else:
+                row += 1
+
+        # plot selection
+        selection_layout = QtGui.QHBoxLayout()
+        sum_lab = QtGui.QLabel('Summarise: ')
+
+        plot_options = QtGui.QComboBox()
+        plot_types = ['depth', 'duration', 'SAC_rate']
+        for o in plot_types:
+            plot_options.addItem(o)
+
+        QtGui.QComboBox.connect(plot_options, QtCore.SIGNAL('activated(const QString&)'), self.change_plot)
+
+        selection_layout.addWidget(sum_lab)
+        selection_layout.addWidget(plot_options)
+        selection_layout.addStretch()
+
+        # plot
+        # invert default background foreground
+        pg.setConfigOption('background', 0.89)
+        pg.setConfigOption('foreground', 'k')
+        sum_plot = pg.PlotWidget()
+
+        # add all to layout
+        his_layout = QtGui.QVBoxLayout()
+        his_layout.addWidget(header)
+        his_layout.addLayout(grid)
+        his_layout.addLayout(selection_layout)
+        his_layout.addWidget(sum_plot)
+
+        self.setLayout(his_layout)
+
+    def change_plot(self):
+        pass
+
+
 class DiveWindow(QtGui.QWidget):
     def __init__(self, dive_record, parent=None):
 
@@ -67,7 +147,7 @@ class DiveWindow(QtGui.QWidget):
         dw_layout = QtGui.QVBoxLayout()
 
         # invert default background foreground
-        pg.setConfigOption('background', 'w')
+        pg.setConfigOption('background', 0.85)
         pg.setConfigOption('foreground', 'k')
 
         # top row of stat boxes
@@ -133,11 +213,11 @@ class DiveWindow(QtGui.QWidget):
 
         box = QtGui.QGroupBox('Dive profile')
         prof_layout = QtGui.QVBoxLayout()
-
+        plot_pen = pg.mkPen('b', width=2)
         profile_plot = pg.PlotWidget()
         profile_plot.setLabel('left', 'Depth', 'm')
         profile_plot.setLabel('bottom', 'Time', 'mins')
-        profile_plot.plot(profile[0], profile[1])
+        profile_plot.plot(profile[0], profile[1], pen=plot_pen)
         prof_layout.addWidget(profile_plot)
 
         box.setLayout(prof_layout)
@@ -218,9 +298,9 @@ class Window(QtGui.QMainWindow):
 
         self.tabs_open = set()
         self.dive_tabs = QtGui.QTabWidget()
-        self.dive_tabs.tab2 = QtGui.QWidget()
+        self.dive_tabs.sum_tab = HistoryWindow(self.dive_data)
 
-        self.dive_tabs.addTab(self.dive_tabs.tab2, "Tab 2")
+        self.dive_tabs.addTab(self.dive_tabs.sum_tab, "History")
 
         self.dive_tabs.setTabsClosable(True)
 
