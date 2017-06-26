@@ -131,13 +131,43 @@ class HistoryWindow(QtGui.QWidget):
 
         self.setLayout(his_layout)
 
-    def change_plot(self):
-        vals = self.dive_data_frame.max_depth.asobject
-        y, x = np.histogram(vals, bins=len(vals))
+    def change_plot(self, text):
+        plot_pen = pg.mkPen('b', width=2)
 
-        # We are required to use stepMode=True so that PlotCurveItem will interpret this data correctly.
-        curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
-        self.sum_plot.addItem(curve)
+        if text == 'depth':
+            self.sum_plot.plotItem.clear()
+            vals = self.dive_data_frame.max_depth.asobject
+            y, x = np.histogram(vals, bins=len(vals))
+
+            # We are required to use stepMode=True so that PlotCurveItem will interpret this data correctly.
+            curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+            self.sum_plot.addItem(curve)
+
+        elif text == 'duration':
+            self.sum_plot.plotItem.clear()
+            vals = [time_2_min(t) for t in self.dive_data_frame.duration.asobject]
+            y, x = np.histogram(vals, bins=len(vals))
+
+            # We are required to use stepMode=True so that PlotCurveItem will interpret this data correctly.
+            curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
+            self.sum_plot.addItem(curve)
+
+        else:
+            self.sum_plot.plotItem.clear()
+            y = self.dive_data_frame.SAC_rate.asobject
+            x = self.dive_data_frame.index
+
+            x_y = [z for z in zip(x, y) if not math.isnan(z[1])]
+
+            clean_x = [c[0] for c in x_y]
+            clean_y = [c[1] for c in x_y]
+
+            line = np.polynomial.polynomial.polyfit(clean_x, clean_y, 1)
+            ffit = np.polynomial.polynomial.polyval(clean_x, line)
+            self.sum_plot.plot(clean_x, ffit, pen=plot_pen)
+            self.sum_plot.plot(x, y, pen=None, symbol='t',
+                               symbolPen=None, symbolSize=10,
+                               symbolBrush=(100, 100, 255, 150))
 
 
 class DiveWindow(QtGui.QWidget):
