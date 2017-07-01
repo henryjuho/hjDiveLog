@@ -75,9 +75,6 @@ class HistoryWindow(QtGui.QWidget):
         total_hours = str(min_2_time(np.sum([time_2_min(x) for x in dive_data_frame.duration])))
         mean_sac = str(round(np.average([x for x in dive_data_frame.SAC_rate if not math.isnan(x)]), 1))
 
-        # heading label
-        header = QtGui.QLabel('Dive summaries')
-
         # Dives to date: Time to date: Average dive time: mean SAC rate:
         labels = ['Dives to date:', 'Average dive length:', 'Hours to date:', 'mean SAC rate:']
         values = [no_dives, average_len, total_hours, mean_sac]
@@ -121,10 +118,10 @@ class HistoryWindow(QtGui.QWidget):
         pg.setConfigOption('background', 0.89)
         pg.setConfigOption('foreground', 'k')
         self.sum_plot = pg.PlotWidget()
+        self.change_plot('depth')
 
         # add all to layout
         his_layout = QtGui.QVBoxLayout()
-        his_layout.addWidget(header)
         his_layout.addLayout(grid)
         his_layout.addLayout(selection_layout)
         his_layout.addWidget(self.sum_plot)
@@ -137,7 +134,7 @@ class HistoryWindow(QtGui.QWidget):
         if text == 'depth':
             self.sum_plot.plotItem.clear()
             vals = self.dive_data_frame.max_depth.asobject
-            y, x = np.histogram(vals, bins=len(vals))
+            y, x = np.histogram(vals, bins=30)
 
             # We are required to use stepMode=True so that PlotCurveItem will interpret this data correctly.
             curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
@@ -146,7 +143,7 @@ class HistoryWindow(QtGui.QWidget):
         elif text == 'duration':
             self.sum_plot.plotItem.clear()
             vals = [time_2_min(t) for t in self.dive_data_frame.duration.asobject]
-            y, x = np.histogram(vals, bins=len(vals))
+            y, x = np.histogram(vals, bins=30)
 
             # We are required to use stepMode=True so that PlotCurveItem will interpret this data correctly.
             curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
@@ -284,13 +281,13 @@ class Window(QtGui.QMainWindow):
         # test data
         self.dive_data = make_data_frame()
 
-        # set toolbar
-        toolbar = QtGui.QToolBar(self)
-        exit_planner = QtGui.QAction(QtGui.QIcon('images/exit.png'), 'exit', self)
-        exit_planner.setShortcut('Ctrl+Q')
-        QtGui.QAction.connect(exit_planner, QtCore.SIGNAL('triggered()'), self.quit_app)
-        toolbar.addAction(exit_planner)
-        self.addToolBar(QtCore.Qt.TopToolBarArea, toolbar)
+        # # set toolbar
+        # toolbar = QtGui.QToolBar(self)
+        # exit_planner = QtGui.QAction(QtGui.QIcon('images/exit.png'), 'exit', self)
+        # exit_planner.setShortcut('Ctrl+Q')
+        # QtGui.QAction.connect(exit_planner, QtCore.SIGNAL('triggered()'), self.quit_app)
+        # toolbar.addAction(exit_planner)
+        # self.addToolBar(QtCore.Qt.TopToolBarArea, toolbar)
 
         # fonts
         self.header_font = QtGui.QFont('SansSerif', 16)
@@ -316,15 +313,16 @@ class Window(QtGui.QMainWindow):
         btn_layout.addStretch()
 
         # make and populate list
-        selection_pane = QtGui.QListWidget()
+        self.selection_pane = QtGui.QListWidget()
         for dive in self.dive_data.index:
             label = str(dive) + ' - ' + self.dive_data[dive-1: dive].date.asobject[0]
             dive_entry = QtGui.QListWidgetItem(label)
-            selection_pane.addItem(dive_entry)
+            self.selection_pane.addItem(dive_entry)
 
-        selection_pane.itemDoubleClicked.connect(self.open_tab)
+        self.selection_pane.itemDoubleClicked.connect(self.open_tab)
+        self.selection_pane.currentItemChanged.connect(self.reload_tab)
 
-        sw_layout.addWidget(selection_pane)
+        sw_layout.addWidget(self.selection_pane)
         sw_layout.addLayout(btn_layout)
 
         left_box.setLayout(sw_layout)
@@ -335,10 +333,12 @@ class Window(QtGui.QMainWindow):
         self.tabs_open = set()
         self.dive_tabs = QtGui.QTabWidget()
         self.dive_tabs.sum_tab = HistoryWindow(self.dive_data)
-
         self.dive_tabs.addTab(self.dive_tabs.sum_tab, "History")
 
-        self.dive_tabs.setTabsClosable(True)
+        # self.dive_tabs.dive_view = QtGui.QWidget()
+        # self.dive_tabs.addTab(self.dive_tabs.dive_view, 'Dive view')
+
+        # self.dive_tabs.setTabsClosable(True)
 
         self.dive_tabs.tabCloseRequested.connect(self.close_tab)
         log_windows.addWidget(self.dive_tabs)
@@ -372,6 +372,16 @@ class Window(QtGui.QMainWindow):
         current_tab.deleteLater()
         self.dive_tabs.removeTab(currentIndex)
         self.tabs_open.remove(item_text)
+
+    def reload_tab(self, item):
+
+        item_text = str(item.text())
+        panda_index = int(item_text.split(' - ')[0])
+        record = self.dive_data[panda_index - 1:panda_index]
+        self.dive_tabs.removeTab(1)
+        self.dive_tabs.dive_view = DiveWindow(record)
+        self.dive_tabs.addTab(self.dive_tabs.dive_view, 'Dive view')
+        self.dive_tabs.setCurrentWidget(self.dive_tabs.dive_view)
 
     def quit_app(self):
 
