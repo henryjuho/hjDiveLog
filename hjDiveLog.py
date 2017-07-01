@@ -17,12 +17,18 @@ def est_profile(t1, d1):
     safety2surf = 1
     stop_t = 3
     desc_1_time = t_per_m_desc * d1
-    asc_1_time2safety = t_per_m_asc * (d1 - 6)
-    d1_bt = t1 - desc_1_time - asc_1_time2safety - safety2surf - stop_t
 
     # profile
-    x = [0, desc_1_time, d1_bt, asc_1_time2safety, stop_t, safety2surf]
-    y = [0, -d1, -d1, -6, -6, 0]
+    if d1 >= 6:
+        asc_1_time2safety = t_per_m_asc * (d1 - 6)
+        d1_bt = t1 - desc_1_time - asc_1_time2safety - safety2surf - stop_t
+        x = [0, desc_1_time, d1_bt, asc_1_time2safety, stop_t, safety2surf]
+        y = [0, -d1, -d1, -6, -6, 0]
+    else:
+        asc_1_no_safety = t_per_m_asc_6 * d1
+        d1_bt = t1 - desc_1_time - asc_1_no_safety
+        x = [0, desc_1_time, d1_bt, asc_1_no_safety]
+        y = [0, -d1, -d1, 0]
 
     x_cum = np.cumsum(x)
 
