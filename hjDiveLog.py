@@ -53,11 +53,16 @@ def min_2_time(minutes):
     return time
 
 
-def calc_sac(start_p, end_p, vol, depth, t):
+def calc_sac(start_p, end_p, vol, depth, avg_depth, t):
+    if not np.isnan(avg_depth):
+        usable_depth = avg_depth
+    else:
+        usable_depth = depth
+
     t = time_2_min(t)
     vol_gas_used = (start_p - end_p) * vol
     l_per_min_atdepth = vol_gas_used / t
-    sac = l_per_min_atdepth / depth2pressure(depth)
+    sac = l_per_min_atdepth / depth2pressure(usable_depth)
     return round(sac, 1)
 
 
@@ -65,9 +70,20 @@ def make_data_frame():
 
     csv_data = 'dive_data.csv'
     dd = pd.read_csv(csv_data, index_col='num')
-    dd['SAC_rate'] = dd.apply(lambda x: calc_sac(x.start_pres, x.end_pres, x.volume, x.max_depth, x.duration), axis=1)
+    dd['SAC_rate'] = dd.apply(lambda x: calc_sac(x.start_pres, x.end_pres, x.volume, x.max_depth, x.avg_depth,
+                                                 x.duration), axis=1)
     dd['profile'] = dd.apply(lambda x: est_profile(time_2_min(x.duration), x.max_depth), axis=1)
     return dd
+
+
+class NewDiveWindow(QtGui.QDialog):
+    def __init__(self, parent=None):
+        super(NewDiveWindow, self).__init__(parent)
+
+        # todo add data entry options boxes etc
+        d_entry_layout = QtGui.QGridLayout()
+
+        self.setLayout(d_entry_layout)
 
 
 class HistoryWindow(QtGui.QWidget):
@@ -315,6 +331,7 @@ class Window(QtGui.QMainWindow):
         # bottom buttons
         btn_layout = QtGui.QHBoxLayout()
         add_dive_btn = QtGui.QPushButton('+')
+        add_dive_btn.clicked.connect(self.dive_entry)
         btn_layout.addWidget(add_dive_btn)
         btn_layout.addStretch()
 
@@ -325,7 +342,7 @@ class Window(QtGui.QMainWindow):
             dive_entry = QtGui.QListWidgetItem(label)
             self.selection_pane.addItem(dive_entry)
 
-        self.selection_pane.itemDoubleClicked.connect(self.open_tab)
+        # self.selection_pane.itemDoubleClicked.connect(self.open_tab)
         self.selection_pane.currentItemChanged.connect(self.reload_tab)
 
         sw_layout.addWidget(self.selection_pane)
@@ -357,19 +374,25 @@ class Window(QtGui.QMainWindow):
         self.setCentralWidget(main_widget)
         self.show()
 
-    def open_tab(self, item):
-        item_text = str(item.text())
-        panda_index = int(item_text.split(' - ')[0])
-        record = self.dive_data[panda_index-1:panda_index]
+    # def open_tab(self, item):
+    #     item_text = str(item.text())
+    #     panda_index = int(item_text.split(' - ')[0])
+    #     record = self.dive_data[panda_index-1:panda_index]
+    #
+    #     if item_text not in self.tabs_open:
+    #         self.dive_tabs.tab = DiveWindow(record)
+    #         self.dive_tabs.addTab(self.dive_tabs.tab, item_text)
+    #         self.dive_tabs.setCurrentWidget(self.dive_tabs.tab)
+    #         self.tabs_open |= {item_text}
+    #
+    #     else:
+    #         pass
 
-        if item_text not in self.tabs_open:
-            self.dive_tabs.tab = DiveWindow(record)
-            self.dive_tabs.addTab(self.dive_tabs.tab, item_text)
-            self.dive_tabs.setCurrentWidget(self.dive_tabs.tab)
-            self.tabs_open |= {item_text}
+    def dive_entry(self):
 
-        else:
-            pass
+        entry_window = NewDiveWindow()
+
+        entry_window.exec_()
 
     def close_tab(self, currentIndex):
 
