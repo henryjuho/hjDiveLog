@@ -83,7 +83,91 @@ class NewDiveWindow(QtGui.QDialog):
         # todo add data entry options boxes etc
         d_entry_layout = QtGui.QGridLayout()
 
+        # labels
+        label_texts = ['time in:', 'duration:', 'max depth:', 'avg depth:', 'temp:', 'start pres:', 'end pres:', 'vol:']
+
+        # entry objects
+        t_in = QtGui.QLineEdit(self)
+        QtGui.QLineEdit.connect(t_in, QtCore.SIGNAL('textChanged (const QString&)'), self.store_t)
+        t_in.setPlaceholderText('hh:mm')
+
+        dur = QtGui.QLineEdit(self)
+        QtGui.QLineEdit.connect(dur, QtCore.SIGNAL('textChanged (const QString&)'), self.store_dur)
+        dur.setPlaceholderText('hh:mm')
+
+        max_d = QtGui.QLineEdit(self)
+        QtGui.QLineEdit.connect(max_d, QtCore.SIGNAL('textChanged (const QString&)'), self.store_max_d)
+        max_d.setPlaceholderText('0.0')
+
+        avg_d = QtGui.QLineEdit(self)
+        QtGui.QLineEdit.connect(avg_d, QtCore.SIGNAL('textChanged (const QString&)'), self.store_avg_d)
+        t_in.setPlaceholderText('0.0')
+
+        temp = QtGui.QLineEdit(self)
+        QtGui.QLineEdit.connect(temp, QtCore.SIGNAL('textChanged (const QString&)'), self.store_temp)
+        t_in.setPlaceholderText('0')
+
+        pres_1 = QtGui.QComboBox(self)
+        for i in range(5, 235, 5):
+            pres_1.addItem(str(i))
+        QtGui.QComboBox.connect(pres_1, QtCore.SIGNAL('activated(const QString&)'), self.store_p1)
+
+        pres_2 = QtGui.QComboBox(self)
+        for i in range(5, 235, 5):
+            pres_2.addItem(str(i))
+        QtGui.QComboBox.connect(pres_2, QtCore.SIGNAL('activated(const QString&)'), self.store_p2)
+
+        v = QtGui.QComboBox(self)
+        for i in [7, 8, 10, 12, 14, 15, 16, 20, 24]:
+            v.addItem(str(i))
+        QtGui.QComboBox.connect(v, QtCore.SIGNAL('activated(const QString&)'), self.store_v)
+
+        # entry list
+        entries = [t_in, dur, max_d, avg_d, temp, pres_1, pres_2, v]
+
+        # populate layout
+        row, column = 0, 0
+        rows_per_box = 3
+
+        for i in range(len(label_texts)):
+            lab, val = label_texts[i], entries[i]
+
+            qt_lab = QtGui.QLabel(lab, self)
+
+            d_entry_layout.addWidget(qt_lab, row, column)
+            d_entry_layout.addWidget(val, row, column + 1)
+
+            if row == rows_per_box - 1:
+                row = 0
+                column += 2
+            else:
+                row += 1
+
         self.setLayout(d_entry_layout)
+
+    def store_t(self):
+        pass
+
+    def store_dur(self):
+        pass
+
+    def store_max_d(self):
+        pass
+
+    def store_avg_d(self):
+        pass
+
+    def store_temp(self):
+        pass
+
+    def store_p1(self):
+        pass
+
+    def store_p2(self):
+        pass
+
+    def store_v(self):
+        pass
 
 
 class HistoryWindow(QtGui.QWidget):
@@ -303,14 +387,6 @@ class Window(QtGui.QMainWindow):
         # test data
         self.dive_data = make_data_frame()
 
-        # # set toolbar
-        # toolbar = QtGui.QToolBar(self)
-        # exit_planner = QtGui.QAction(QtGui.QIcon('images/exit.png'), 'exit', self)
-        # exit_planner.setShortcut('Ctrl+Q')
-        # QtGui.QAction.connect(exit_planner, QtCore.SIGNAL('triggered()'), self.quit_app)
-        # toolbar.addAction(exit_planner)
-        # self.addToolBar(QtCore.Qt.TopToolBarArea, toolbar)
-
         # fonts
         self.header_font = QtGui.QFont('SansSerif', 16)
         self.header_font.setBold(True)
@@ -373,20 +449,6 @@ class Window(QtGui.QMainWindow):
         main_widget.setLayout(whole_layout)
         self.setCentralWidget(main_widget)
         self.show()
-
-    # def open_tab(self, item):
-    #     item_text = str(item.text())
-    #     panda_index = int(item_text.split(' - ')[0])
-    #     record = self.dive_data[panda_index-1:panda_index]
-    #
-    #     if item_text not in self.tabs_open:
-    #         self.dive_tabs.tab = DiveWindow(record)
-    #         self.dive_tabs.addTab(self.dive_tabs.tab, item_text)
-    #         self.dive_tabs.setCurrentWidget(self.dive_tabs.tab)
-    #         self.tabs_open |= {item_text}
-    #
-    #     else:
-    #         pass
 
     def dive_entry(self):
 
