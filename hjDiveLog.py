@@ -245,6 +245,8 @@ class HistoryWindow(QtGui.QWidget):
             # We are required to use stepMode=True so that PlotCurveItem will interpret this data correctly.
             curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
             self.sum_plot.addItem(curve)
+            self.sum_plot.setLabel('bottom', 'Depth', 'm')
+            self.sum_plot.setLabel('left', 'Dive count')
 
         elif text == 'duration':
             self.sum_plot.plotItem.clear()
@@ -254,6 +256,8 @@ class HistoryWindow(QtGui.QWidget):
             # We are required to use stepMode=True so that PlotCurveItem will interpret this data correctly.
             curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
             self.sum_plot.addItem(curve)
+            self.sum_plot.setLabel('bottom', 'Time', 'mins')
+            self.sum_plot.setLabel('left', 'Dive count')
 
         else:
             self.sum_plot.plotItem.clear()
@@ -271,6 +275,8 @@ class HistoryWindow(QtGui.QWidget):
             self.sum_plot.plot(x, y, pen=None, symbol='t',
                                symbolPen=None, symbolSize=10,
                                symbolBrush=(100, 100, 255, 150))
+            self.sum_plot.setLabel('bottom', 'Number of dives', '')
+            self.sum_plot.setLabel('left', 'SAC rate', 'l/min')
 
 
 class DiveWindow(QtGui.QWidget):
