@@ -80,13 +80,25 @@ class NewDiveWindow(QtGui.QDialog):
     def __init__(self, parent=None):
         super(NewDiveWindow, self).__init__(parent)
 
-        # todo add data entry options boxes etc
+        self.setWindowTitle('New dive record')
+
+        # data dict
+        columns = ['date', 'time_in', 'duration', 'max_depth', 'avg_depth', 'temp',
+                   'start_pres', 'end_pres', 'volume', 'with']
+
+        label_texts = [y.replace('_', ' ') + ':' for y in columns]
+
+        new_dive_data = {x: '' for x in label_texts + ['notes']}
+
+        # start layouts
+        d_window_layout = QtGui.QVBoxLayout()
         d_entry_layout = QtGui.QGridLayout()
 
-        # labels
-        label_texts = ['time in:', 'duration:', 'max depth:', 'avg depth:', 'temp:', 'start pres:', 'end pres:', 'vol:']
-
         # entry objects
+        date = QtGui.QLineEdit(self)
+        QtGui.QLineEdit.connect(date, QtCore.SIGNAL('textChanged (const QString&)'), self.store_date)
+        date.setPlaceholderText('dd_mm_yy')
+
         t_in = QtGui.QLineEdit(self)
         QtGui.QLineEdit.connect(t_in, QtCore.SIGNAL('textChanged (const QString&)'), self.store_t)
         t_in.setPlaceholderText('hh:mm')
@@ -101,11 +113,11 @@ class NewDiveWindow(QtGui.QDialog):
 
         avg_d = QtGui.QLineEdit(self)
         QtGui.QLineEdit.connect(avg_d, QtCore.SIGNAL('textChanged (const QString&)'), self.store_avg_d)
-        t_in.setPlaceholderText('0.0')
+        avg_d.setPlaceholderText('0.0')
 
         temp = QtGui.QLineEdit(self)
         QtGui.QLineEdit.connect(temp, QtCore.SIGNAL('textChanged (const QString&)'), self.store_temp)
-        t_in.setPlaceholderText('0')
+        temp.setPlaceholderText('0')
 
         pres_1 = QtGui.QComboBox(self)
         for i in range(5, 235, 5):
@@ -122,12 +134,19 @@ class NewDiveWindow(QtGui.QDialog):
             v.addItem(str(i))
         QtGui.QComboBox.connect(v, QtCore.SIGNAL('activated(const QString&)'), self.store_v)
 
+        buds = QtGui.QLineEdit(self)
+        QtGui.QLineEdit.connect(buds, QtCore.SIGNAL('textChanged (const QString&)'), self.store_buds)
+        buds.setPlaceholderText('buddy1,buddy2')
+
+        save_btn = QtGui.QPushButton('Save dive')
+        save_btn.clicked.connect(self.save_dive)
+
         # entry list
-        entries = [t_in, dur, max_d, avg_d, temp, pres_1, pres_2, v]
+        entries = [date, t_in, dur, max_d, avg_d, temp, pres_1, pres_2, v, buds]
 
         # populate layout
         row, column = 0, 0
-        rows_per_box = 3
+        rows_per_box = 4
 
         for i in range(len(label_texts)):
             lab, val = label_texts[i], entries[i]
@@ -143,15 +162,25 @@ class NewDiveWindow(QtGui.QDialog):
             else:
                 row += 1
 
-        self.setLayout(d_entry_layout)
+        # notes box
+        notes_box = QtGui.QTextEdit()
 
-    def store_t(self):
+        d_window_layout.addLayout(d_entry_layout)
+        d_window_layout.addWidget(notes_box)
+        d_window_layout.addWidget(save_btn)
+
+        self.setLayout(d_window_layout)
+
+    def store_date(self, text):
         pass
 
-    def store_dur(self):
+    def store_t(self, text):
         pass
 
-    def store_max_d(self):
+    def store_dur(self, text):
+        pass
+
+    def store_max_d(self, text):
         pass
 
     def store_avg_d(self):
@@ -167,6 +196,16 @@ class NewDiveWindow(QtGui.QDialog):
         pass
 
     def store_v(self):
+        pass
+
+    def store_buds(self):
+        pass
+
+    def save_dive(self):
+        # todo check all boxes filled
+
+        # todo add new record to dataframe
+
         pass
 
 
@@ -246,7 +285,7 @@ class HistoryWindow(QtGui.QWidget):
             curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
             self.sum_plot.addItem(curve)
             self.sum_plot.setLabel('bottom', 'Depth', 'm')
-            self.sum_plot.setLabel('left', 'Dive count')
+            self.sum_plot.setLabel('left', 'Dive count', '')
 
         elif text == 'duration':
             self.sum_plot.plotItem.clear()
@@ -257,7 +296,7 @@ class HistoryWindow(QtGui.QWidget):
             curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 150))
             self.sum_plot.addItem(curve)
             self.sum_plot.setLabel('bottom', 'Time', 'mins')
-            self.sum_plot.setLabel('left', 'Dive count')
+            self.sum_plot.setLabel('left', 'Dive count', '')
 
         else:
             self.sum_plot.plotItem.clear()
@@ -439,13 +478,6 @@ class Window(QtGui.QMainWindow):
         self.dive_tabs = QtGui.QTabWidget()
         self.dive_tabs.sum_tab = HistoryWindow(self.dive_data)
         self.dive_tabs.addTab(self.dive_tabs.sum_tab, "History")
-
-        # self.dive_tabs.dive_view = QtGui.QWidget()
-        # self.dive_tabs.addTab(self.dive_tabs.dive_view, 'Dive view')
-
-        # self.dive_tabs.setTabsClosable(True)
-
-        self.dive_tabs.tabCloseRequested.connect(self.close_tab)
         log_windows.addWidget(self.dive_tabs)
 
         whole_layout.addWidget(left_box)
