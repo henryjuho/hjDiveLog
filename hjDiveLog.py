@@ -66,6 +66,26 @@ def calc_sac(start_p, end_p, vol, depth, avg_depth, t):
     return round(sac, 1)
 
 
+def update_csv(csv, new_record_dict):
+    contents = open(csv).readlines()
+    header = contents[0].rstrip().split(',')
+    no_dives = len(contents)
+    last_dive = contents[-1].split(',')
+    last_dive_end = last_dive[4]
+    last_dive_date = last_dive[1]
+    new_record_dict['time_out'] = min_2_time(time_2_min(new_record_dict['time_in']) +
+                                             time_2_min(new_record_dict['duration']))
+
+    if last_dive_date == new_record_dict['date']:
+        new_record_dict['surf'] = min_2_time(time_2_min(new_record_dict['time_in']) - time_2_min(last_dive_end))
+    else:
+        new_record_dict['surf'] = 'NA'
+
+    new_line = ','.join([str(no_dives)] + [str(new_record_dict[z]) for z in header if z != 'num'])
+    with open(csv, 'a') as updating_csv:
+        updating_csv.write('\n' + new_line)
+
+
 def make_data_frame():
 
     csv_data = 'dive_data.csv'
@@ -88,7 +108,7 @@ class NewDiveWindow(QtGui.QDialog):
 
         label_texts = [y.replace('_', ' ') + ':' for y in columns]
 
-        self.new_dive_data = {x: [] for x in columns + ['notes']}
+        self.new_dive_data = {x: '' for x in columns + ['notes']}
 
         # start layouts
         d_window_layout = QtGui.QVBoxLayout()
@@ -174,44 +194,44 @@ class NewDiveWindow(QtGui.QDialog):
         self.setLayout(d_window_layout)
 
     def store_date(self, text):
-        self.new_dive_data['date'] = [str(text)]
+        self.new_dive_data['date'] = str(text)
 
     def store_t(self, text):
-        self.new_dive_data['time_in'] = [str(text)]
+        self.new_dive_data['time_in'] = str(text)
 
     def store_dur(self, text):
-        self.new_dive_data['duration'] = [str(text)]
+        self.new_dive_data['duration'] = str(text)
 
     def store_max_d(self, text):
-        self.new_dive_data['max_depth'] = [float(text)]
+        self.new_dive_data['max_depth'] = float(text)
 
     def store_avg_d(self, text):
-        self.new_dive_data['avg_depth'] = [float(text)]
+        self.new_dive_data['avg_depth'] = float(text)
 
     def store_temp(self, text):
-        self.new_dive_data['temp'] = [int(text)]
+        self.new_dive_data['temp'] = int(text)
 
     def store_p1(self, text):
-        self.new_dive_data['start_pres'] = [int(text)]
+        self.new_dive_data['start_pres'] = int(text)
 
     def store_p2(self, text):
-        self.new_dive_data['end_pres'] = [int(text)]
+        self.new_dive_data['end_pres'] = int(text)
 
     def store_v(self, text):
-        self.new_dive_data['volume'] = [int(text)]
+        self.new_dive_data['volume'] = int(text)
 
     def store_buds(self, text):
-        self.new_dive_data['with'] = [str(text)]
+        self.new_dive_data['with'] = str(text)
 
     def store_notes(self):
         text = self.notes_box.toPlainText()
-        self.new_dive_data['notes'] = [str(text)]
+        self.new_dive_data['notes'] = str(text)
 
     def save_dive(self):
 
         missing_data = []
         for x in self.new_dive_data.keys():
-            if len(self.new_dive_data[x]) == 0:
+            if self.new_dive_data[x] == '':
                 missing_data.append(x)
 
         if len(missing_data) > 0:
@@ -513,7 +533,18 @@ class Window(QtGui.QMainWindow):
         if entry_window.exec_():
             new_record = entry_window.get_record()
 
-            print new_record
+            update_csv('dive_data.csv', new_record)
+
+            # reload data
+            self.dive_data = make_data_frame()
+
+            # add latest entry
+            dive = self.dive_data.index[-1]
+            label = str(dive) + ' - ' + self.dive_data[dive - 1: dive].date.asobject[0]
+            dive_entry = QtGui.QListWidgetItem(label)
+            self.selection_pane.addItem(dive_entry)
+
+            # todo update history graphs
 
     def close_tab(self, currentIndex):
 
