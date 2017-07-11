@@ -88,7 +88,7 @@ class NewDiveWindow(QtGui.QDialog):
 
         label_texts = [y.replace('_', ' ') + ':' for y in columns]
 
-        new_dive_data = {x: '' for x in label_texts + ['notes']}
+        self.new_dive_data = {x: [] for x in columns + ['notes']}
 
         # start layouts
         d_window_layout = QtGui.QVBoxLayout()
@@ -163,50 +163,68 @@ class NewDiveWindow(QtGui.QDialog):
                 row += 1
 
         # notes box
-        notes_box = QtGui.QTextEdit()
+        self.notes_box = QtGui.QTextEdit()
+        QtGui.QTextEdit.connect(self.notes_box, QtCore.SIGNAL('textChanged ()'), self.store_notes)
+        self.notes_box.setPlainText('notes')
 
         d_window_layout.addLayout(d_entry_layout)
-        d_window_layout.addWidget(notes_box)
+        d_window_layout.addWidget(self.notes_box)
         d_window_layout.addWidget(save_btn)
 
         self.setLayout(d_window_layout)
 
     def store_date(self, text):
-        pass
+        self.new_dive_data['date'] = [str(text)]
 
     def store_t(self, text):
-        pass
+        self.new_dive_data['time_in'] = [str(text)]
 
     def store_dur(self, text):
-        pass
+        self.new_dive_data['duration'] = [str(text)]
 
     def store_max_d(self, text):
-        pass
+        self.new_dive_data['max_depth'] = [float(text)]
 
-    def store_avg_d(self):
-        pass
+    def store_avg_d(self, text):
+        self.new_dive_data['avg_depth'] = [float(text)]
 
-    def store_temp(self):
-        pass
+    def store_temp(self, text):
+        self.new_dive_data['temp'] = [int(text)]
 
-    def store_p1(self):
-        pass
+    def store_p1(self, text):
+        self.new_dive_data['start_pres'] = [int(text)]
 
-    def store_p2(self):
-        pass
+    def store_p2(self, text):
+        self.new_dive_data['end_pres'] = [int(text)]
 
-    def store_v(self):
-        pass
+    def store_v(self, text):
+        self.new_dive_data['volume'] = [int(text)]
 
-    def store_buds(self):
-        pass
+    def store_buds(self, text):
+        self.new_dive_data['with'] = [str(text)]
+
+    def store_notes(self):
+        text = self.notes_box.toPlainText()
+        self.new_dive_data['notes'] = [str(text)]
 
     def save_dive(self):
-        # todo check all boxes filled
 
-        # todo add new record to dataframe
+        missing_data = []
+        for x in self.new_dive_data.keys():
+            if len(self.new_dive_data[x]) == 0:
+                missing_data.append(x)
 
-        pass
+        if len(missing_data) > 0:
+            error_fields = ', '.join([y.replace('_', ' ') for y in missing_data])
+            QtGui.QMessageBox.warning(self, 'Missing data',
+                                      'You have not entered data for: {} please enter data!'.format(error_fields),
+                                      QtGui.QMessageBox.Ok)
+
+        else:
+            self.accept()
+
+    def get_record(self):
+        return self.new_dive_data
 
 
 class HistoryWindow(QtGui.QWidget):
@@ -492,7 +510,10 @@ class Window(QtGui.QMainWindow):
 
         entry_window = NewDiveWindow()
 
-        entry_window.exec_()
+        if entry_window.exec_():
+            new_record = entry_window.get_record()
+
+            print new_record
 
     def close_tab(self, currentIndex):
 
